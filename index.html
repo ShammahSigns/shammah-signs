@@ -922,6 +922,8 @@
   }
 
   // ---------- Google Drive: autenticación ----------
+  let silentAttemptInProgress = false;
+
   function initGoogleAuth(){
     if(typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2){
       setDriveStatus('No se pudo cargar el inicio de sesión de Google.', false, true);
@@ -931,8 +933,12 @@
       client_id: GOOGLE_CLIENT_ID,
       scope: DRIVE_SCOPE,
       callback: async (resp)=>{
+        const wasSilent = silentAttemptInProgress;
+        silentAttemptInProgress = false;
         if(resp.error){
-          setDriveStatus('No se pudo conectar con Drive. Intenta de nuevo.', false, true);
+          if(!wasSilent){
+            setDriveStatus('No se pudo conectar con Drive. Intenta de nuevo.', false, true);
+          }
           return;
         }
         accessToken = resp.access_token;
@@ -946,7 +952,14 @@
   function connectDrive(){
     if(!tokenClient) initGoogleAuth();
     if(!tokenClient) return;
-    tokenClient.requestAccessToken({prompt: accessToken ? '' : 'consent'});
+    silentAttemptInProgress = false;
+    tokenClient.requestAccessToken({prompt: ''});
+  }
+
+  function trySilentReconnect(){
+    if(!tokenClient || accessToken) return;
+    silentAttemptInProgress = true;
+    tokenClient.requestAccessToken({prompt: 'none'});
   }
 
   function disconnectDrive(){
@@ -1148,7 +1161,10 @@
   document.getElementById('drive-sync-btn').addEventListener('click', ()=> syncFromDrive());
   document.getElementById('drive-disconnect-btn').addEventListener('click', disconnectDrive);
   updateDriveUI();
-  window.addEventListener('load', initGoogleAuth);
+  window.addEventListener('load', ()=>{
+    initGoogleAuth();
+    trySilentReconnect();
+  });
 
   // ---------- tabs con indicador deslizante ----------
   const tabButtons = document.querySelectorAll('nav.tabs button');
