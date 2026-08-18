@@ -908,7 +908,11 @@
   function normalize(str){
     return str
       .toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/[áàäâ]/g, 'a')
+      .replace(/[éèëê]/g, 'e')
+      .replace(/[íìïî]/g, 'i')
+      .replace(/[óòöô]/g, 'o')
+      .replace(/[úùüû]/g, 'u')
       .trim();
   }
 
