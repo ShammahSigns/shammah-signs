@@ -959,6 +959,53 @@
       .trim();
   }
 
+  // ---------- filtro de malas palabras (español e inglés) ----------
+  const BLOCKED_WORDS = new Set([
+    // español
+    'puta','puto','putas','putos','putazo','putona','putito',
+    'mierda','mierdas','pendejo','pendeja','pendejos','pendejas',
+    'cabron','cabrona','cabrones','verga','vergas','pito','pitos',
+    'coño','cono','joder','jodido','jodida','culero','culera','culo','culos',
+    'chinga','chingar','chingada','chingado','chingadera','chingaderas',
+    'cagada','cagado','cagar','maricon','marica','maricones',
+    'zorra','zorras','perra','perras','bastardo','bastarda',
+    'imbecil','imbeciles','idiota','idiotas','estupido','estupida',
+    'gilipollas','hijueputa','hpta','hp','sexo','porno','pornografia',
+    'violacion','violador','drogas','droga','marihuana','cocaina',
+    'nazi','terrorista','suicidio','matar','asesino','asesinar',
+    // inglés
+    'fuck','fucker','fucking','fucked','shit','shitty','bitch','bitches',
+    'bastard','asshole','ass','dick','dicks','pussy','cunt','cock',
+    'whore','slut','damn','crap','faggot','fag','nigger','nigga',
+    'retard','retarded','sex','porn','porno','drugs','drug','rape',
+    'nazi','terrorist','suicide','kill','murder'
+  ]);
+  function isBlockedWord(normWord){
+    return BLOCKED_WORDS.has(normWord);
+  }
+  // revisa si el texto completo o alguna palabra suelta está bloqueada
+  function textHasBlockedWord(text){
+    const norm = normalize(text);
+    if(!norm) return false;
+    if(isBlockedWord(norm)) return true;
+    const tokens = norm.split(/[^a-zà-ÿ0-9]+/).filter(Boolean);
+    return tokens.some(t => isBlockedWord(t));
+  }
+  // detecta si, deletreando letra por letra (abecedario), se forma una mala palabra
+  function spelledWordIsBlocked(words){
+    let run = '';
+    for(let i = 0; i <= words.length; i++){
+      const w = words[i];
+      if(w && w.length === 1 && /[a-zà-ÿ]/i.test(w)){
+        run += w.toLowerCase();
+      } else {
+        if(run.length >= 3 && isBlockedWord(normalize(run))) return true;
+        run = '';
+      }
+    }
+    return false;
+  }
+
   function formatCategory(str){
     const trimmed = (str || '').trim();
     if(!trimmed) return DEFAULT_CATEGORY;
@@ -1610,6 +1657,7 @@
   function renderSuggestions(){
     const q = normalize(searchInput.value);
     if(!q){ suggestionsBox.classList.remove('show'); suggestionsBox.innerHTML=''; return; }
+    if(textHasBlockedWord(searchInput.value)){ suggestionsBox.classList.remove('show'); suggestionsBox.innerHTML=''; return; }
     const matches = dictionary.filter(e=>e.norm.includes(q)).slice(0, 3);
     if(matches.length === 0){ suggestionsBox.classList.remove('show'); suggestionsBox.innerHTML=''; return; }
     suggestionsBox.innerHTML = matches.map(m => `
@@ -1635,6 +1683,11 @@
     const resultBox = document.getElementById('search-result');
     if(!q){
       resultBox.innerHTML = '';
+      return;
+    }
+    if(textHasBlockedWord(searchInput.value)){
+      suggestionsBox.classList.remove('show');
+      resultBox.innerHTML = `<div class="no-match">Esa palabra no está permitida en la app.</div>`;
       return;
     }
     const exact = dictionary.find(e=>e.norm === q);
@@ -1686,6 +1739,16 @@
   function buildSentence(){
     const text = document.getElementById('sentence-input').value;
     const words = text.split(/[^a-zA-ZÀ-ÿ0-9']+/).map(w=>w.trim()).filter(Boolean);
+    const chipRow = document.getElementById('chip-row');
+    const playBar = document.getElementById('play-bar');
+
+    if(textHasBlockedWord(text) || spelledWordIsBlocked(words)){
+      currentChain = [];
+      chipRow.innerHTML = `<div class="no-match">Esa palabra no está permitida en la app.</div>`;
+      playBar.style.display = 'none';
+      return;
+    }
+
     const maxSpan = dictionary.reduce((max, e) => Math.max(max, e.norm.split(' ').length), 1);
     currentChain = [];
     let i = 0;
