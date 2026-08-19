@@ -790,7 +790,7 @@
       <div class="row">
         <div class="field">
           <label for="new-word">Palabra</label>
-          <input type="text" id="new-word" placeholder="ej. gracias" autocomplete="off">
+          <input type="text" id="new-word" placeholder="ej. gracias" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
         </div>
         <div class="field">
           <label for="new-category">Categoría</label>
@@ -830,7 +830,7 @@
       <p class="hint">Escribe la palabra que quieres ver en lengua de señas.</p>
       <div class="field search-input-wrap">
         <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-        <input type="text" id="search-input" placeholder="Escribe una palabra..." autocomplete="off">
+        <input type="text" id="search-input" placeholder="Escribe una palabra..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
         <div id="search-suggestions" class="suggestions"></div>
       </div>
       <div id="search-result" class="search-result"></div>
@@ -843,7 +843,7 @@
       <h2>Armar una oración</h2>
       <p class="hint">Escribe una oración completa. Buscaremos cada palabra en tu diccionario y las encadenaremos en orden.</p>
       <div class="field">
-        <textarea id="sentence-input" placeholder="ej. buenos días como estás"></textarea>
+        <textarea id="sentence-input" placeholder="ej. buenos días como estás" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
       </div>
       <button class="primary" id="build-btn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h9a3 3 0 0 1 0 6H8a3 3 0 0 0 0 6h8"/></svg>
@@ -950,6 +950,7 @@
 
   function normalize(str){
     return str
+      .normalize('NFC')
       .toLowerCase()
       .replace(/[áàäâ]/g, 'a')
       .replace(/[éèëê]/g, 'e')
