@@ -480,7 +480,7 @@
     max-height:0;opacity:0;
     transition:max-height .25s ease, opacity .2s ease;
   }
-  .suggestions.show{max-height:260px;opacity:1;overflow-y:auto;}
+  .suggestions.show{max-height:180px;opacity:1;overflow-y:auto;}
   .suggestions button{
     display:flex;align-items:center;gap:10px;width:100%;text-align:left;
     padding:10px 14px;background:none;border:none;font-size:14px;color:var(--ink);
@@ -1570,7 +1570,7 @@
   function renderSuggestions(){
     const q = normalize(searchInput.value);
     if(!q){ suggestionsBox.classList.remove('show'); suggestionsBox.innerHTML=''; return; }
-    const matches = dictionary.filter(e=>e.norm.includes(q)).slice(0, 6);
+    const matches = dictionary.filter(e=>e.norm.includes(q)).slice(0, 4);
     if(matches.length === 0){ suggestionsBox.classList.remove('show'); suggestionsBox.innerHTML=''; return; }
     suggestionsBox.innerHTML = matches.map(m => `
       <button type="button" data-word="${m.word.replace(/"/g,'&quot;')}">
@@ -1598,8 +1598,13 @@
       return;
     }
     const exact = dictionary.find(e=>e.norm === q);
-    const partial = !exact ? dictionary.filter(e=>e.norm.includes(q)) : [];
-    const match = exact || partial[0];
+    const hasPartial = !exact && dictionary.some(e=>e.norm.includes(q));
+    const match = exact;
+
+    if(hasPartial){
+      resultBox.innerHTML = '';
+      return;
+    }
 
     if(match){
       resultBox.innerHTML = `
@@ -1639,11 +1644,24 @@
   function buildSentence(){
     const text = document.getElementById('sentence-input').value;
     const words = text.split(/[^a-zA-ZÀ-ÿ0-9']+/).map(w=>w.trim()).filter(Boolean);
-    currentChain = words.map(w=>{
-      const norm = normalize(w);
-      const entry = dictionary.find(e=>e.norm === norm) || null;
-      return {word: w, entry};
-    });
+    const maxSpan = dictionary.reduce((max, e) => Math.max(max, e.norm.split(' ').length), 1);
+    currentChain = [];
+    let i = 0;
+    while(i < words.length){
+      let matchedEntry = null;
+      let matchedLen = 1;
+      for(let span = Math.min(maxSpan, words.length - i); span >= 1; span--){
+        const phrase = words.slice(i, i + span).join(' ');
+        const norm = normalize(phrase);
+        const entry = dictionary.find(e => e.norm === norm);
+        if(entry){ matchedEntry = entry; matchedLen = span; break; }
+      }
+      currentChain.push({
+        word: words.slice(i, i + matchedLen).join(' '),
+        entry: matchedEntry
+      });
+      i += matchedLen;
+    }
     renderChain();
   }
 
