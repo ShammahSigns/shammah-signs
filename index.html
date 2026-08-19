@@ -874,7 +874,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
     <div class="lightbox-spinner"></div>
-    <video id="lightbox-video" controls autoplay muted playsinline></video>
+    <video id="lightbox-video" controls controlsList="novolume nodownload noremoteplayback" disableRemotePlayback autoplay muted playsinline></video>
     <div class="lightbox-word" id="lightbox-word"></div>
   </div>
 </div>
@@ -1337,13 +1337,42 @@
   const lightboxVideo = document.getElementById('lightbox-video');
   const lightboxWord = document.getElementById('lightbox-word');
   let sequencePlaying = false;
+
+  // ---------- texto a voz ----------
+  let preferredVoice = null;
+  function pickBestSpanishVoice(){
+    if(!('speechSynthesis' in window)) return;
+    const voices = window.speechSynthesis.getVoices();
+    if(!voices.length) return;
+    const esVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('es'));
+    const pool = esVoices.length ? esVoices : voices;
+    // Prioridad: voces "naturales"/neuronales de Google o Microsoft, luego cualquier voz en español, luego cualquiera
+    preferredVoice =
+      pool.find(v => /google/i.test(v.name) && /female|mujer/i.test(v.name)) ||
+      pool.find(v => /natural/i.test(v.name)) ||
+      pool.find(v => /google/i.test(v.name)) ||
+      pool.find(v => /microsoft/i.test(v.name) && /natural|online/i.test(v.name)) ||
+      pool[0] || null;
+  }
+  if('speechSynthesis' in window){
+    pickBestSpanishVoice();
+    window.speechSynthesis.onvoiceschanged = pickBestSpanishVoice;
+    // "Calienta" el motor de voz para que la primera palabra no tenga retraso
+    try{
+      const warm = new SpeechSynthesisUtterance(' ');
+      warm.volume = 0;
+      window.speechSynthesis.speak(warm);
+    }catch(err){}
+  }
   function speakWord(text){
     if(!('speechSynthesis' in window) || !text) return;
     try{
-      window.speechSynthesis.cancel();
+      if(window.speechSynthesis.speaking) window.speechSynthesis.cancel();
       const utter = new SpeechSynthesisUtterance(text);
       utter.lang = 'es-ES';
-      utter.rate = 0.92;
+      utter.rate = 0.95;
+      utter.pitch = 1.05;
+      if(preferredVoice) utter.voice = preferredVoice;
       window.speechSynthesis.speak(utter);
     }catch(err){ console.error('No se pudo usar texto a voz', err); }
   }
@@ -1631,7 +1660,7 @@
         resultBox.innerHTML = `
           <h3>${match.word}</h3>
           <div class="cat-pill-wrap"><span class="cat-pill-inline">${match.category}</span></div>
-          <video class="big-video" src="${url}" controls autoplay muted loop playsinline></video>
+          <video class="big-video" src="${url}" controls controlsList="novolume nodownload noremoteplayback" disableRemotePlayback autoplay muted loop playsinline></video>
         `;
       }catch(err){
         if(myGen !== searchGen) return;
@@ -1737,6 +1766,20 @@
     speakWord(currentChain[playIndex].word);
     await openLightboxForEntry(currentChain[playIndex].entry);
   }
+
+  // ---------- forzar silencio total en todos los videos, siempre ----------
+  document.addEventListener('volumechange', (e)=>{
+    if(e.target && e.target.tagName === 'VIDEO'){
+      e.target.muted = true;
+      e.target.volume = 0;
+    }
+  }, true);
+  document.addEventListener('play', (e)=>{
+    if(e.target && e.target.tagName === 'VIDEO'){
+      e.target.muted = true;
+      e.target.volume = 0;
+    }
+  }, true);
 
   initDB();
 </script>
